@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>研究室 レイアウト検討 (55.3㎡)</title>
+<style>
+  :root{ --bg:#f4f5f7; --panel:#fff; --line:#d7dbe0; --ink:#1b1f24; --accent:#2b6cb0; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Yu Gothic UI","Yu Gothic","Meiryo",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
+  #app{display:flex;height:100vh;overflow:hidden}
+  #side{width:330px;min-width:330px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px}
+  #stage{flex:1;overflow:auto;padding:20px;background:#e9ecef}
+  h1{font-size:15px;margin:0 0 2px}
+  h2{font-size:12px;margin:16px 0 6px;padding-bottom:3px;border-bottom:2px solid var(--accent);color:var(--accent);letter-spacing:.04em}
+  .sub{font-size:11px;color:#667}
+  .row{display:flex;gap:6px;align-items:center;margin:4px 0;flex-wrap:wrap}
+  .row label{font-size:11px;color:#556}
+  button{font:inherit;font-size:11px;padding:5px 9px;border:1px solid var(--line);background:#fff;border-radius:5px;cursor:pointer}
+  button:hover{background:#eef4fb;border-color:var(--accent)}
+  button.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.pri:hover{background:#245a96}
+  input[type=number],input[type=text],select{font:inherit;font-size:11px;padding:4px 5px;border:1px solid var(--line);border-radius:4px;width:74px}
+  input[type=text]{width:100%}
+  .pal{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .pal button{text-align:left;font-size:10.5px;padding:5px 6px;line-height:1.35}
+  table.sum{width:100%;border-collapse:collapse;font-size:11px}
+  table.sum td,table.sum th{border-bottom:1px solid #eceff2;padding:3px 4px;text-align:left}
+  table.sum td:last-child,table.sum th:last-child{text-align:right}
+  .note{font-size:11px;line-height:1.65;color:#445;background:#fffbe9;border:1px solid #f0e3b0;border-radius:6px;padding:8px 10px}
+  .note b{color:#8a6d00}
+  .warn{background:#fdecec;border-color:#f3bcbc}
+  svg{background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.14);display:block;margin:0 auto}
+  .it{cursor:move}
+  .it.sel rect.body{stroke-width:50}
+  input[type=color]{width:40px;height:25px;padding:1px;border:1px solid var(--line);border-radius:4px;background:#fff;cursor:pointer;vertical-align:middle}
+  .sw{width:22px;height:22px;padding:0;border-radius:4px;border:2px solid transparent;cursor:pointer}
+  .sw:hover{outline:1px solid var(--accent)}
+  .sw.on{border-color:#1b1f24;box-shadow:0 0 0 2px #fff inset}
+  .grp{border:1px solid var(--line);border-radius:6px;padding:7px 8px;margin-top:6px;background:#fbfcfd}
+  .grp .ttl{font-size:10.5px;color:#778;margin-bottom:4px}
+  kbd{background:#eee;border:1px solid #ccc;border-bottom-width:2px;border-radius:3px;padding:0 4px;font-size:10px}
+  @media print{
+    #side{display:none} #stage{overflow:visible;padding:0;background:#fff} .hdl{display:none}
+    body{background:#fff}
+    svg{box-shadow:none;width:var(--pw) !important;height:var(--ph) !important}
+    @page{size:A3 landscape;margin:8mm}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+<div id="side">
+  <h1>研究室 レイアウト</h1>
+  <div class="sub" id="roomhead">レイアウト検討ツール</div>
+
+  <h2>レイアウトパターン</h2>
+  <div class="row"><select id="pat" style="width:100%;flex:1"></select></div>
+  <div class="row"><button class="pri" onclick="applyPattern()">このパターンを適用</button>
+    <span id="patseat" class="sub"></span></div>
+  <div id="patdesc" class="note" style="margin-top:4px"></div>
+
+  <h2>室の内法（面積 55.3㎡ 固定）</h2>
+  <div class="grp">
+    <div class="row">
+      <label>幅 W</label><input type="number" id="rw" step="5" style="width:72px">
+      <label>奥行 D</label><input type="number" id="rh" step="5" style="width:72px"><span class="sub">mm</span>
+    </div>
+    <div class="row"><input type="range" id="rwslide" min="6000" max="9200" step="5" style="flex:1"></div>
+    <div class="row">
+      <button onclick="resetRoom()">既定に戻す</button>
+      <button onclick="fitItems()">はみ出しを室内へ</button>
+    </div>
+    <div class="sub" id="roominfo"></div>
+  </div>
+
+  <h2>表示・縮尺</h2>
+  <div class="row"><label>画面</label><input id="zoom" type="range" min="0.04" max="0.22" step="0.005" value="0.092" style="flex:1"><span id="zl" class="sub"></span></div>
+  <div class="row"><label>印刷</label>
+    <select id="pscale"><option value="50">1/50 (A3横)</option><option value="40">1/40 (A3横)</option><option value="60">1/60 (A4横)</option></select>
+    <button onclick="window.print()">印刷 / PDF</button>
+  </div>
+  <div class="row">
+    <label><input type="checkbox" id="cgrid" checked> グリッド</label>
+    <label><input type="checkbox" id="cdim" checked> 寸法線</label>
+    <label><input type="checkbox" id="clab" checked> 寸法表記</label>
+    <label><input type="checkbox" id="csnap" checked> 25mmスナップ</label>
+  </div>
+
+  <h2>選択中のオブジェクト</h2>
+  <div id="insp" class="sub">図面上の家具をクリックすると編集できます。</div>
+
+  <h2>家具を追加</h2>
+  <div class="pal" id="pal"></div>
+  <div class="grp">
+    <div class="ttl">自由に追加（名称・寸法・色を指定）</div>
+    <div class="row"><input type="text" id="cn" placeholder="名称（例：カンファ用ホワイトボード）"></div>
+    <div class="row">
+      <label>W</label><input type="number" id="cw" value="900" step="10" style="width:62px">
+      <label>D</label><input type="number" id="cd" value="450" step="10" style="width:62px">
+      <label>H</label><input type="number" id="ch" placeholder="任意" step="10" style="width:62px">
+    </div>
+    <div class="row">
+      <label>種類</label><select id="ct" style="width:auto;flex:1"></select>
+      <input type="color" id="cc" value="#f0f0f0">
+      <button class="pri" onclick="addCustom()">追加</button>
+    </div>
+  </div>
+
+  <h2>色の一括設定（種類別）</h2>
+  <div class="grp">
+    <div class="row">
+      <select id="tt" style="width:auto;flex:1"></select>
+      <input type="color" id="tf"><input type="color" id="ts">
+      <button onclick="applyType()">適用</button>
+    </div>
+    <div class="row"><button onclick="resetColors()">色をすべて初期化</button></div>
+    <div class="sub">個別に色を付けた家具は、そちらの色が優先されます。</div>
+  </div>
+
+  <h2>数量集計</h2>
+  <table class="sum" id="sum"></table>
+
+  <h2>保存 / 書き出し</h2>
+  <div class="row">
+    <button class="pri" onclick="saveLS()">保存</button>
+    <button onclick="loadLS()">復元</button>
+    <button onclick="resetAll()">初期配置に戻す</button>
+  </div>
+  <div class="row">
+    <button onclick="expPNG()">PNG書き出し</button>
+    <button onclick="expSVG()">SVG書き出し</button>
+    <button onclick="expJSON()">JSON</button>
+    <label style="cursor:pointer;border:1px solid var(--line);padding:5px 9px;border-radius:5px;font-size:11px">読込<input type="file" id="fimp" accept=".json" hidden></label>
+  </div>
+  <div class="sub" style="margin-top:8px">
+    ドラッグ=移動 / <kbd>R</kbd>=90°回転 / <kbd>←↑→↓</kbd>=50mm移動(Shiftで10mm) / <kbd>Ctrl</kbd>+<kbd>D</kbd>=複製 / <kbd>Del</kbd>=削除<br>
+    <b>家具を選ぶと四隅・四辺に□ハンドル</b>が出ます。辺=縦/横、角=斜めに寸法変更。<br>
+    基準寸法から変わると名前が自動で「机A」などに変わり、元の寸法に戻すと「机」へ戻ります。
+  </div>
+
+  <h2>設計メモ・要確認事項</h2>
+  <div class="sub" style="margin-bottom:5px">※②〜⑦はパターン①（島2つ）を前提にした記述です。他パターンでも④フリーザー・⑤圧迫感対策・⑦設備の考え方は共通です。</div>
+  <div class="note warn">
+    <b>要確認①</b> <b>面積 55.3㎡ は確定</b>ですが、内法の縦横比は「55.3㎡ ÷ 7,245mm」から逆算した推定値です。実施設計図で幅が判明したら上の「室の内法」に入力してください（奥行は面積55.3㎡を保つよう自動計算され、窓・扉・排水口の位置も比例して追従します）。
+  </div>
+  <div class="note" style="margin-top:6px">
+    <b>②扉</b> 下部の扉2か所は内開きと仮定し開閉範囲を赤破線で表示。左側扉の開閉範囲には会議椅子を置かない配置としています。<br>
+    <b>③流し台</b> 右上の既設排水口（◎印）位置に固定。隣に給湯棚（電子レンジ・ポット）を連続配置。<br>
+    <b>④フリーザー</b> UD-80W74NF（74L / <b>W640×D490×H950</b> / 70kg / 単相100V 7.6A・360W / HC可燃性冷媒）。<br>　・<b>背面・側面を壁から100mm以上離す</b>（赤破線が離隔範囲）<br>　・<b>専用コンセント1口を単独で配線</b>（タコ足・延長コード禁止／15A専用回路を要望）<br>　・チェスト（上開き）型のため<b>上方と前面に開閉スペース</b>が必要。H950なので窓の採光を妨げない<br>　・可燃性冷媒のため火気・熱源から離し、扉から離れた北西隅に配置<br>
+    <b>⑤圧迫感対策</b> 仕切りは H1,100mm のローパーティション（着座時は視線が切れ、立てば室全体が見渡せる高さ）。棚も H1,200mm 以下に統一。窓側は高い什器を置かず採光を確保。<br>
+    <b>⑥島と会議の境界</b> 棚2台（1,500×500）を島の南側に置いて仕切りを兼ねさせ、パーティション延長を短くしています。中央 x=3,300〜4,400 に幅1,100mmの通路開口。<br>
+    <b>⑦設備</b> フロアコンセント：島A・島B下に各1（電源6口＋LAN4口）、会議テーブル下に1。プリンタ棚位置に電源2口＋LAN1口。フリーザー位置（北西隅）に<b>専用回路コンセント1口</b>。
+  </div>
+</div>
+<div id="stage"><div id="wrap"></div></div>
+</div>
+
+<script>
+/* ===== 室条件 ===== */
+var AREA=55.3e6;          /* 確定値 55.3㎡ = 55,300,000 mm²（変更不可） */
+var RW0=7245;             /* 既定の内法幅（55.3㎡ ÷ 7,245 の想定） */
+var WT=150;
+var RW, RH, KX, KY;
+var VB={x:-1050,y:-1100,w:9200,h:9900};
+
+/* 幅を決めると奥行は面積から自動決定される */
+function setRoom(w){
+  RW=Math.max(3000,Math.min(14000,Math.round(w)));
+  RH=Math.round(AREA/RW);
+  KX=RW/RW0; KY=RH/Math.round(AREA/RW0);   /* 既設設備の位置を比率で追従させる係数 */
+  VB={x:-1050,y:-1100,w:RW+1955,h:RH+2270};
+}
+setRoom(RW0);
+
+var TYPES={
+  desk     :{f:'#d7e8fa',s:'#2b6cb0'},
+  shelf    :{f:'#efe3cb',s:'#8a6d3b'},
+  chair    :{f:'#ffffff',s:'#7a8390'},
+  table    :{f:'#dcedd2',s:'#3d7a1e'},
+  sink     :{f:'#cfeeea',s:'#2c7a7b'},
+  kitchen  :{f:'#cfeeea',s:'#2c7a7b'},
+  freezer  :{f:'#f9d3d3',s:'#b03a3a'},
+  locker   :{f:'#e5dff2',s:'#5b4b8a'},
+  printer  :{f:'#e5dff2',s:'#5b4b8a'},
+  monitor  :{f:'#dfe3e8',s:'#3a4048'},
+  shredder :{f:'#eceff2',s:'#5a6470'},
+  partition:{f:'#fbd9a5',s:'#c0761c'},
+  misc     :{f:'#f0f0f0',s:'#666666'}
+};
+
+var TYPES0=JSON.parse(JSON.stringify(TYPES));
+
+/* ===== 共通パーツ生成 ===== */
+function d(x,y){  return {t:'desk',n:'机',x:x,y:y,w:700,h:1800,r:0};}        /* 東西向き（縦長） */
+function dh(x,y){ return {t:'desk',n:'机',x:x,y:y,w:1800,h:700,r:0};}        /* 南北向き（横長） */
+function c(x,y){  return {t:'chair',n:'椅子',x:x,y:y,w:500,h:500,r:0};}
+function sh(x,y,w,h){ return {t:'shelf',n:'棚',x:x,y:y,w:w,h:h,r:0};}
+function fz(x,y){ return {t:'freezer',n:'低温フリーザー',x:x,y:y,w:640,h:490,r:0};}
+function sk(){    return {t:'sink',n:'流し台',x:5745,y:0,w:1500,h:500,r:0};}
+function kt(x,y,w,h){ return {t:'kitchen',n:'給湯棚',x:x,y:y,w:w,h:h,r:0};}
+function lk(x,y,w,h){ return {t:'locker',n:'ロッカー4人分',x:x,y:y,w:w,h:h,r:0};}
+function pr(x,y,w,h){ return {t:'printer',n:'プリンタ棚',x:x,y:y,w:w,h:h,r:0};}
+function mn(x,y,w,h){ return {t:'monitor',n:'大型モニター',x:x,y:y,w:w,h:h,r:0};}
+function sd(x,y){ return {t:'shredder',n:'シュレッダー',x:x,y:y,w:450,h:400,r:0};}
+function tb(x,y,w,h){ return {t:'table',n:'会議テーブル',x:x,y:y,w:w,h:h,r:0};}
+function pt(x,y,w){ return {t:'partition',n:'ローパーティション H1,100',x:x,y:y,w:w,h:60,r:0};}
+
+/* ===== レイアウトパターン ===== */
+var PATTERNS=[
+{id:'island2', name:'① 島2つ（現行案）', seat:'執務8席／会議8席',
+ desc:'4席の島を東西に2つ。北側を執務、南側をカンファレンスにパーティションで分離。中央 x=3,300〜4,400 に幅1,100mmの通路、東側 x=6,100〜 にも開口。',
+ zones:[[3350,2650,'執務ゾーン（8席）','#ccd7e2'],[2400,6350,'カンファレンス（8席）','#d2e2c8']],
+ dims:[['v',0,5000,'執務ゾーン 5,000'],['v',5000,7630,'会議ゾーン 2,630'],
+       ['h',500,3300,'パーティション 2,800'],['h',3300,4400,'通路 1,100'],
+       ['h',4400,6100,'パーティション 1,700'],['h',6100,7245,'開口 1,145']],
+ build:function(){ return [
+  fz(100,100), kt(4400,0,1200,450), sk(), sh(5500,7130,1200,500),
+  sh(0,1200,500,1500), sh(0,2800,500,1500), sh(0,4400,500,1500),
+  sh(6745,600,500,1500), sh(6745,6100,500,1500),
+  sh(1300,4400,1500,500), sh(4500,4400,1500,500),
+  d(1300,800), d(1300,2600), d(2000,800), d(2000,2600),
+  c(750,1450), c(750,3250), c(2750,1450), c(2750,3250),
+  d(4600,800), d(4600,2600), d(5300,800), d(5300,2600),
+  c(4050,1450), c(4050,3250), c(6000,1450), c(6000,3250),
+  lk(6730,2200,515,1200), lk(6730,3400,515,1200),
+  pr(6745,4700,500,1200), sd(6250,6400),
+  pt(500,5000,2800), pt(4400,5000,1700),
+  tb(500,5700,4000,1000),
+  c(750,5100), c(1750,5100), c(2750,5100), c(3750,5100),
+  c(700,6750), c(2750,6750), c(3750,6750), c(4600,5900),
+  mn(5600,5800,500,1200)
+ ];}},
+
+{id:'island1', name:'② 島1つ（大島6席＋窓側2席）', seat:'執務8席／会議8席',
+ desc:'中央に6席の大きな島を1つ。窓側に2席を配置し、給湯棚は流し台の隣（東壁）へ。南側はゆったりした会議ゾーン。',
+ zones:[[3400,2000,'執務ゾーン（8席）','#ccd7e2'],[2600,6250,'カンファレンス（8席）','#d2e2c8']],
+ dims:[['v',0,4700,'執務ゾーン 4,700'],['v',4700,7630,'会議ゾーン 2,930'],
+       ['h',500,3300,'パーティション 2,800'],['h',3300,4400,'通路 1,100'],
+       ['h',4400,6700,'パーティション 2,300']],
+ build:function(){ return [
+  fz(100,100), sk(), kt(6745,700,500,1200), sh(4700,0,1000,500),
+  dh(900,0), dh(2800,0), c(1550,720), c(3450,720),
+  dh(700,2500), dh(2500,2500), dh(4300,2500),
+  dh(700,3200), dh(2500,3200), dh(4300,3200),
+  c(1350,1980), c(3150,1980), c(4950,1980),
+  c(1350,3920), c(3150,3920), c(4950,3920),
+  lk(6730,2100,515,1200), lk(6730,3300,515,1200), pr(6745,4600,500,1200),
+  sh(0,4900,500,1500),
+  pt(500,4700,2800), pt(4400,4700,2300),
+  tb(800,5500,4000,1000),
+  c(1050,4950), c(2050,4950), c(3050,4950), c(4050,4950),
+  c(1050,6550), c(2900,6550), c(3900,6550), c(4850,5750),
+  mn(5700,5700,500,1200), sd(6300,6900)
+ ];}},
+
+{id:'wall8', name:'③ 全席壁向き（壁付け8席）', seat:'執務8席／会議8席',
+ desc:'机をすべて壁に向けて配置し、室の中央を大きく空けて会議テーブルを置く案。視線が交わらず集中しやすい。ロッカーは南壁にまとめて配置。',
+ zones:[[3650,1600,'壁付け執務（8席）','#ccd7e2'],[3700,3950,'カンファレンス（8席）','#d2e2c8']],
+ dims:[['h',1200,6045,'中央フリースペース 4,845'],['v',1200,6300,'机ゾーン 5,100']],
+ build:function(){ return [
+  fz(100,100), kt(4400,0,1200,450), sk(), mn(3200,0,1200,500),
+  d(0,900), d(0,2700), d(0,4500), c(700,1550), c(700,3350), c(700,5150),
+  d(6545,900), d(6545,2700), d(6545,4500), c(6045,1550), c(6045,3350), c(6045,5150),
+  dh(1200,0), c(1850,700),
+  dh(2700,6930), c(3350,6430),
+  tb(2500,3200,2400,1200),
+  c(2750,2700), c(3550,2700), c(4350,2700),
+  c(2750,4400), c(3550,4400), c(4350,4400),
+  c(2000,3700), c(4900,3700),
+  lk(750,7115,900,515), lk(5500,7115,1200,515),
+  pr(6745,6300,500,1200), sd(200,6400)
+ ];}},
+
+{id:'ushape', name:'④ コの字（内向き8席）', seat:'執務8席／会議8席',
+ desc:'机をコの字に並べ全員が室の中央を向く案。中央に会議テーブルを置き、ゼミ・回診カンファをその場で開ける。壁際は全周が通路。',
+ zones:[[3600,6150,'コの字執務（8席）','#ccd7e2'],[3600,4050,'カンファレンス（8席）','#d2e2c8']],
+ dims:[['h',0,800,'通路 800'],['h',6445,7245,'通路 800'],['v',1900,6600,'中央スペース 4,700']],
+ build:function(){ return [
+  fz(100,100), kt(4400,0,1200,450), sk(), sh(900,0,1000,500),
+  d(800,1200), d(800,3000), d(800,4800), c(1500,1850), c(1500,3650), c(1500,5450),
+  d(5745,1200), d(5745,3000), d(5745,4800), c(5245,1850), c(5245,3650), c(5245,5450),
+  dh(2000,700), dh(3800,700), c(2650,1400), c(4450,1400),
+  tb(2600,3400,2000,1000),
+  c(2850,2900), c(3550,2900), c(4250,2900),
+  c(2850,4400), c(3550,4400), c(4250,4400),
+  c(2100,3650), c(4600,3650),
+  mn(3200,6400,1200,500),
+  sh(300,7130,1400,500), sh(2700,7130,1800,500),
+  lk(5550,7115,1200,515), pr(6745,5500,500,1200), sd(6750,4800)
+ ];}},
+
+{id:'conf12', name:'⑤ 会議重視（大会議12席＋執務4席）', seat:'執務4席／会議12席',
+ desc:'症例検討・多職種カンファを主目的にした案。4,000×1,200の大テーブルに12席。執務は北側2列4席に絞り、残りを収納に回す。',
+ zones:[[2500,2300,'執務（4席）','#ccd7e2'],[3200,5750,'大会議（12席）','#d2e2c8']],
+ dims:[['v',0,3900,'執務ゾーン 3,900'],['v',4500,6700,'会議ゾーン 2,200'],
+       ['h',1200,5200,'会議テーブル 4,000']],
+ build:function(){ return [
+  fz(100,100), kt(4400,0,1200,450), sk(),
+  dh(900,700), dh(2800,700), c(1550,1450), c(3450,1450),
+  dh(900,3200), dh(2800,3200), c(1550,2650), c(3450,2650),
+  tb(1200,5000,4000,1200),
+  c(1450,4500), c(2350,4500), c(3250,4500), c(4150,4500),
+  c(1450,6200), c(2350,6200), c(3250,6200), c(4150,6200),
+  c(700,5300), c(700,5800), c(5200,5300), c(5200,5800),
+  sh(0,700,500,1500), sh(0,2400,500,1500),
+  sh(6745,700,500,1500), sh(6745,2400,500,1500),
+  lk(6730,4100,515,1200), pr(6745,5400,500,1200),
+  mn(5900,5000,500,1200), sd(6000,3900),
+  sh(2700,7130,1800,500)
+ ];}},
+
+{id:'booth', name:'⑥ ブース型（個席8＋会議6席）', seat:'執務8席／会議6席',
+ desc:'東西の壁沿いに1人用ブースを縦に並べ、間をローパーティション（H1,100）で仕切る案。個人の作業集中を最優先。中央は6席の打合せテーブル。',
+ zones:[[3600,5600,'個席ブース（8席）','#ccd7e2'],[3600,3200,'打合せ（6席）','#d2e2c8']],
+ dims:[['h',0,700,'ブース奥行 700'],['h',1200,6045,'中央 4,845'],['v',800,6400,'ブース列 5,600']],
+ build:function(){ return [
+  fz(100,100), kt(4400,0,1200,450), sk(), sh(3300,0,1000,500),
+  d(0,800), d(0,2700), d(0,4600), c(700,1450), c(700,3350), c(700,5250),
+  pt(0,2610,1200), pt(0,4510,1200),
+  d(6545,700), d(6545,2600), d(6545,4500), c(6045,1350), c(6045,3250), c(6045,5150),
+  pt(6045,2510,1200), pt(6045,4410,1200),
+  dh(1400,0), c(2050,700),
+  dh(2700,6930), c(3350,6430),
+  tb(2400,2600,2400,1000),
+  c(2700,2100), c(3450,2100), c(4200,2100),
+  c(2700,3600), c(3450,3600), c(4200,3600),
+  mn(5100,2600,500,1000),
+  lk(750,7115,900,515), lk(5500,7115,1200,515),
+  pr(6745,6400,500,1000), sd(200,6600)
+ ];}}
+];
+
+var patIdx=0;
+function DEFAULT(){
+ return PATTERNS[patIdx].build().map(function(o,i){ o.id=i+1; return o; });
+}
+
+var PALETTE=[
+ ['desk','机',1800,700],['shelf','棚',1500,500],['chair','椅子',500,500],
+ ['table','会議テーブル',4000,1000],['sink','流し台',1500,500],['kitchen','給湯棚',1200,450],
+ ['freezer','低温フリーザー',640,490],['locker','ロッカー4人分',1200,515],
+ ['printer','プリンタ棚',1200,500],['monitor','大型モニター',1200,500],
+ ['shredder','シュレッダー',450,400],['partition','パーティション',2000,60],
+ ['misc','書庫',900,450],['misc','冷蔵庫',600,650]
+];
+
+var TYPELABEL={desk:'机',shelf:'棚',chair:'椅子',table:'テーブル',sink:'流し台',kitchen:'給湯棚',
+  freezer:'フリーザー',locker:'ロッカー',printer:'プリンタ棚',monitor:'モニター',
+  shredder:'シュレッダー',partition:'パーティション',misc:'その他'};
+
+/* クイック配色パレット [塗り, 線, 名称] */
+var COLORS=[
+ ['#d7e8fa','#2b6cb0','青'],['#dcedd2','#3d7a1e','緑'],['#efe3cb','#8a6d3b','茶'],
+ ['#f9d3d3','#b03a3a','赤'],['#e5dff2','#5b4b8a','紫'],['#cfeeea','#2c7a7b','水'],
+ ['#fbd9a5','#c0761c','橙'],['#fdf3bf','#a08a00','黄'],['#eceff2','#5a6470','灰'],
+ ['#ffffff','#7a8390','白'],['#fddde6','#b03a6a','桃'],['#1b1f24','#000000','黒']
+];
+function darken(hex,k){
+  hex=String(hex||'#cccccc'); if(hex[0]!=='#'||hex.length!==7) return '#666666';
+  var n=parseInt(hex.slice(1),16);
+  var r=Math.round(((n>>16)&255)*k), g=Math.round(((n>>8)&255)*k), b=Math.round((n&255)*k);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+/* ===== 基準名 / 寸法バリアント名（机 → 机A） ===== */
+var VARIANTS={};
+function normalize(list){
+  list.forEach(function(o){
+    if(o.bn===undefined) o.bn=o.n;
+    if(o.bw===undefined) o.bw=o.w;
+    if(o.bh===undefined) o.bh=o.h;
+    syncName(o);
+  });
+  return list;
+}
+function sizeKey(o){ return Math.round(o.w)+'x'+Math.round(o.h); }
+function isBase(o){ return Math.round(o.w)===Math.round(o.bw) && Math.round(o.h)===Math.round(o.bh); }
+function letterOf(i){ var s=''; i++; while(i>0){ s=String.fromCharCode(65+((i-1)%26))+s; i=Math.floor((i-1)/26); } return s; }
+function variantLetter(o){
+  var bn=o.bn, k=sizeKey(o);
+  var reg=VARIANTS[bn]||(VARIANTS[bn]={});
+  /* 現在どこにも使われていない寸法の記号は解放（ドラッグ中に記号が増え続けないように） */
+  var used={};
+  items.forEach(function(i){ if(i.bn===bn && !isBase(i)) used[sizeKey(i)]=1; });
+  Object.keys(reg).forEach(function(kk){ if(!used[kk]) delete reg[kk]; });
+  if(reg[k]) return reg[k];
+  var taken={}; Object.keys(reg).forEach(function(kk){ taken[reg[kk]]=1; });
+  var n=0; while(taken[letterOf(n)]) n++;
+  reg[k]=letterOf(n);
+  return reg[k];
+}
+function syncName(o){
+  if(o.bn===undefined){ o.bn=o.n; o.bw=o.w; o.bh=o.h; }
+  o.n = isBase(o) ? o.bn : (o.bn + variantLetter(o));
+}
+function rebase(){ var o=cur(); if(!o) return; o.bw=o.w; o.bh=o.h; syncName(o); render(); }
+
+var items=normalize(DEFAULT()), sel=null, nextId=1000, Z=0.092;
+
+/* ===== 幾何 ===== */
+function cx(o){return o.x+o.w/2;}
+function cy(o){return o.y+o.h/2;}
+function bbox(o){
+  var w=(o.r%180===0)?o.w:o.h, h=(o.r%180===0)?o.h:o.w;
+  return {x:cx(o)-w/2,y:cy(o)-h/2,w:w,h:h};
+}
+function outside(o){var b=bbox(o);return b.x<-1||b.y<-1||b.x+b.w>RW+1||b.y+b.h>RH+1;}
+
+/* ===== 描画 ===== */
+var wrap=document.getElementById('wrap');
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmt(n){return Math.round(n).toLocaleString('en-US');}
+
+function dimH(x1,x2,y,txt){
+  return '<g stroke="#c0392b" stroke-width="10" fill="none">'
+   +'<line x1="'+x1+'" y1="'+y+'" x2="'+x2+'" y2="'+y+'"/>'
+   +'<line x1="'+x1+'" y1="'+(y-90)+'" x2="'+x1+'" y2="'+(y+90)+'"/>'
+   +'<line x1="'+x2+'" y1="'+(y-90)+'" x2="'+x2+'" y2="'+(y+90)+'"/></g>'
+   +'<text x="'+((x1+x2)/2)+'" y="'+(y-80)+'" font-size="195" fill="#c0392b" text-anchor="middle">'+txt+'</text>';
+}
+function dimV(y1,y2,x,txt){
+  var m=(y1+y2)/2;
+  return '<g stroke="#c0392b" stroke-width="10" fill="none">'
+   +'<line x1="'+x+'" y1="'+y1+'" x2="'+x+'" y2="'+y2+'"/>'
+   +'<line x1="'+(x-90)+'" y1="'+y1+'" x2="'+(x+90)+'" y2="'+y1+'"/>'
+   +'<line x1="'+(x-90)+'" y1="'+y2+'" x2="'+(x+90)+'" y2="'+y2+'"/></g>'
+   +'<text x="'+(x-80)+'" y="'+m+'" font-size="195" fill="#c0392b" text-anchor="middle" transform="rotate(-90 '+(x-80)+' '+m+')">'+txt+'</text>';
+}
+
+function doorSym(x0,w,hingeLeft){
+  var hx = hingeLeft ? x0 : x0+w;
+  var ex = hingeLeft ? hx+w : hx-w;
+  var sweep = hingeLeft ? 1 : 0;
+  return '<g>'
+   +'<rect x="'+x0+'" y="'+RH+'" width="'+w+'" height="'+WT+'" fill="#ffffff"/>'
+   +'<path d="M '+hx+' '+RH+' L '+hx+' '+(RH-w)+' A '+w+' '+w+' 0 0 '+sweep+' '+ex+' '+RH+' Z" fill="rgba(217,75,75,0.07)" stroke="#d94b4b" stroke-width="10" stroke-dasharray="70 50"/>'
+   +'<line x1="'+hx+'" y1="'+RH+'" x2="'+hx+'" y2="'+(RH-w)+'" stroke="#d94b4b" stroke-width="26"/>'
+   +'<text x="'+(x0+w/2)+'" y="'+(RH+WT+210)+'" font-size="175" fill="#d94b4b" text-anchor="middle">出入口 W'+w+'</text></g>';
+}
+function drainSym(x,y,used){
+  return '<g><circle cx="'+x+'" cy="'+y+'" r="95" fill="'+(used?'#2c7a7b':'none')+'" fill-opacity="0.3" stroke="#1b64c8" stroke-width="14"/>'
+   +'<line x1="'+(x-67)+'" y1="'+(y-67)+'" x2="'+(x+67)+'" y2="'+(y+67)+'" stroke="#1b64c8" stroke-width="12"/>'
+   +'<line x1="'+(x-67)+'" y1="'+(y+67)+'" x2="'+(x+67)+'" y2="'+(y-67)+'" stroke="#1b64c8" stroke-width="12"/>'
+   +'<text x="'+x+'" y="'+(y+310)+'" font-size="155" fill="#1b64c8" text-anchor="middle">'+(used?'排水口（使用）':'排水口')+'</text></g>';
+}
+
+function drawShell(){
+  var g=document.getElementById('cgrid').checked, dm=document.getElementById('cdim').checked;
+  var s='';
+  s+='<rect x="'+(-WT)+'" y="'+(-WT)+'" width="'+(RW+WT*2)+'" height="'+(RH+WT*2)+'" fill="#4a4a4a"/>';
+  s+='<rect x="0" y="0" width="'+RW+'" height="'+RH+'" fill="#ffffff"/>';
+  if(g){
+    for(var x=0;x<=RW;x+=500) s+='<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+RH+'" stroke="'+(x%1000?'#f1f3f5':'#e2e6ea')+'" stroke-width="8"/>';
+    for(var y=0;y<=RH;y+=500) s+='<line x1="0" y1="'+y+'" x2="'+RW+'" y2="'+y+'" stroke="'+(y%1000?'#f1f3f5':'#e2e6ea')+'" stroke-width="8"/>';
+  }
+  /* 窓（上壁）: 両端400mmを残して開口 */
+  var wm=Math.round(400*KX), we=RW-wm;
+  s+='<g><rect x="'+wm+'" y="'+(-WT)+'" width="'+(we-wm)+'" height="'+WT+'" fill="#eaf4ff" stroke="#4a4a4a" stroke-width="12"/>'
+    +'<line x1="'+wm+'" y1="'+(-WT/2)+'" x2="'+we+'" y2="'+(-WT/2)+'" stroke="#5b8ec4" stroke-width="18"/>'
+    +'<text x="'+Math.round(RW/2)+'" y="'+(-WT-100)+'" font-size="185" fill="#2b6cb0" text-anchor="middle">窓</text></g>';
+  /* 扉（位置は内法幅に比例。扉幅900は固定） */
+  s+=doorSym(Math.round(1700*KX),900,true)+doorSym(Math.round(4550*KX),900,false);
+  /* 既設排水口（位置は内法に比例） */
+  s+=drainSym(Math.round(4835*KX),250,false)+drainSym(Math.round(6300*KX),250,true)
+    +drainSym(Math.round(1060*KX),RH-200,false)+drainSym(Math.round(3917*KX),RH-200,false);
+  /* ゾーン名（パターンごと） */
+  var ZN=PATTERNS[patIdx].zones||[];
+  for(var zi=0;zi<ZN.length;zi++)
+    s+='<text x="'+ZN[zi][0]+'" y="'+ZN[zi][1]+'" font-size="330" fill="'+ZN[zi][3]+'" text-anchor="middle" font-weight="bold">'+ZN[zi][2]+'</text>';
+  if(dm){
+    s+=dimH(0,RW,-650,'内法 '+fmt(RW));
+    s+=dimV(0,RH,-650,'内法 '+fmt(RH));
+    var DM=PATTERNS[patIdx].dims||[];
+    for(var di=0;di<DM.length;di++){
+      var a=DM[di];
+      s+= (a[0]==='h') ? dimH(a[1],a[2],RH+950,a[3]) : dimV(a[1],a[2],RW+560,a[3]);
+    }
+  }
+  return s;
+}
+
+function drawItems(){
+  var lab=document.getElementById('clab').checked;
+  return items.map(function(o){
+    var T0=TYPES[o.t]||TYPES.misc;
+    var T={f:(o.f||T0.f), s:(o.s||T0.s)};
+    var C=cx(o)+' '+cy(o), bad=outside(o);
+    var st = bad ? '#e02b2b' : T.s;
+    var inner='';
+    if(o.t==='chair'){
+      inner='<rect class="body" x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" rx="95" fill="'+T.f+'" stroke="'+st+'" stroke-width="18"/>'
+           +'<rect x="'+(o.x+70)+'" y="'+o.y+'" width="'+(o.w-140)+'" height="110" rx="55" fill="'+T.s+'" opacity="0.5"/>';
+    } else if(o.t==='sink'){
+      inner='<rect class="body" x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" fill="'+T.f+'" stroke="'+st+'" stroke-width="22"/>'
+           +'<rect x="'+(o.x+o.w-640)+'" y="'+(o.y+70)+'" width="520" height="'+(o.h-140)+'" rx="40" fill="#ffffff" stroke="'+T.s+'" stroke-width="16"/>'
+           +'<circle cx="'+(o.x+o.w-380)+'" cy="'+(o.y+o.h/2)+'" r="48" fill="'+T.s+'"/>';
+    } else if(o.t==='freezer'){
+      var CL=100; /* 壁からの離隔 10cm */
+      inner='<rect x="'+(o.x-CL)+'" y="'+(o.y-CL)+'" width="'+(o.w+CL*2)+'" height="'+(o.h+CL*2)+'" fill="none" stroke="#b03a3a" stroke-width="12" stroke-dasharray="90 60" opacity="0.8"/>'
+           +'<rect class="body" x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" fill="'+T.f+'" stroke="'+st+'" stroke-width="26"/>'
+           +'<rect x="'+(o.x+60)+'" y="'+(o.y+60)+'" width="'+(o.w-120)+'" height="'+(o.h-120)+'" fill="none" stroke="'+T.s+'" stroke-width="12" opacity="0.5"/>'
+           +'<line x1="'+(o.x+o.w*0.25)+'" y1="'+o.y+'" x2="'+(o.x+o.w*0.75)+'" y2="'+o.y+'" stroke="'+T.s+'" stroke-width="40"/>'
+           +'<text x="'+(o.x+o.w/2)+'" y="'+(o.y-CL-70)+'" font-size="140" fill="#b03a3a" text-anchor="middle">壁から100mm以上離隔</text>'
+           +'<text x="'+(o.x+o.w/2)+'" y="'+(o.y+o.h+CL+380)+'" font-size="130" fill="#8a8a8a" text-anchor="middle">UD-80W74NF / 74L / H950 / 70kg</text>'
+           +'<text x="'+(o.x+o.w/2)+'" y="'+(o.y+o.h+CL+200)+'" font-size="140" fill="#b03a3a" text-anchor="middle">上開き／専用コンセント（100V 7.6A）</text>';
+    } else if(o.t==='monitor'){
+      inner='<rect class="body" x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" fill="'+T.f+'" stroke="'+st+'" stroke-width="22"/>'
+           +'<rect x="'+o.x+'" y="'+o.y+'" width="95" height="'+o.h+'" fill="'+T.s+'"/>';
+    } else {
+      inner='<rect class="body" x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" fill="'+T.f+'" stroke="'+st+'" stroke-width="22"/>';
+      if(o.t==='desk') inner+='<line x1="'+o.x+'" y1="'+o.y+'" x2="'+(o.x+o.w)+'" y2="'+o.y+'" stroke="'+T.s+'" stroke-width="26" opacity="0.4"/>';
+      if(o.t==='shelf'||o.t==='printer'||o.t==='locker'||o.t==='kitchen'){
+        inner += (o.w>=o.h)
+          ? '<line x1="'+o.x+'" y1="'+(o.y+o.h/2)+'" x2="'+(o.x+o.w)+'" y2="'+(o.y+o.h/2)+'" stroke="'+T.s+'" stroke-width="12" opacity="0.45"/>'
+          : '<line x1="'+(o.x+o.w/2)+'" y1="'+o.y+'" x2="'+(o.x+o.w/2)+'" y2="'+(o.y+o.h)+'" stroke="'+T.s+'" stroke-width="12" opacity="0.45"/>';
+      }
+    }
+    var txt='';
+    if(o.t!=='chair'){
+      var fs = (Math.min(o.w,o.h)<520) ? 140 : 172;
+      var vert = o.h > o.w*1.6;
+      var tx=cx(o), ty=cy(o);
+      var l2 = lab ? (fmt(o.w)+'×'+fmt(o.h)+(o.z?' H'+fmt(o.z):'')) : '';
+      var rot = vert ? ' transform="rotate(-90 '+tx+' '+ty+')"' : '';
+      var lum=(function(h){ if(!/^#[0-9a-f]{6}$/i.test(h)) return 1;
+        var n=parseInt(h.slice(1),16);
+        return (0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255))/255; })(T.f);
+      var tc = lum<0.5 ? '#ffffff' : '#1b1f24', tc2 = lum<0.5 ? '#d6dbe0' : '#6a737d';
+      txt='<g'+rot+' pointer-events="none">'
+        +'<text x="'+tx+'" y="'+(ty+(l2?-15:58))+'" font-size="'+fs+'" text-anchor="middle" fill="'+tc+'">'+esc(o.n)+'</text>'
+        +(l2?'<text x="'+tx+'" y="'+(ty+175)+'" font-size="'+(fs-28)+'" text-anchor="middle" fill="'+tc2+'">'+l2+'</text>':'')
+        +'</g>';
+    }
+    return '<g class="it'+(sel===o.id?' sel':'')+'" data-id="'+o.id+'" transform="rotate('+o.r+' '+C+')">'+inner+txt+'</g>';
+  }).join('');
+}
+
+var HDIR={nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',
+          n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize'};
+function drawHandles(){
+  var o=cur(); if(!o) return '';
+  var hs=Math.max(70,Math.round(13/Z)), lw=Math.max(10,Math.round(1.6/Z));
+  var C=cx(o)+' '+cy(o);
+  var P=[['nw',o.x,o.y],['n',o.x+o.w/2,o.y],['ne',o.x+o.w,o.y],
+         ['e',o.x+o.w,o.y+o.h/2],['se',o.x+o.w,o.y+o.h],['s',o.x+o.w/2,o.y+o.h],
+         ['sw',o.x,o.y+o.h],['w',o.x,o.y+o.h/2]];
+  var g='<g class="hdl" transform="rotate('+(o.r||0)+' '+C+')">'
+   +'<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" fill="none" '
+   +'stroke="#2b6cb0" stroke-width="'+lw+'" stroke-dasharray="'+Math.round(hs*1.2)+' '+Math.round(hs*0.7)+'" pointer-events="none"/>';
+  for(var i=0;i<P.length;i++){
+    g+='<rect class="hd" data-h="'+P[i][0]+'" x="'+(P[i][1]-hs/2)+'" y="'+(P[i][2]-hs/2)+'"'
+      +' width="'+hs+'" height="'+hs+'" rx="'+Math.round(hs*0.18)+'" fill="#ffffff" stroke="#2b6cb0"'
+      +' stroke-width="'+lw+'" style="cursor:'+HDIR[P[i][0]]+'"/>';
+  }
+  return g+'</g>';
+}
+
+function render(){
+  var sc=+document.getElementById('pscale').value;
+  var pw=(VB.w/sc).toFixed(1)+'mm', ph=(VB.h/sc).toFixed(1)+'mm';
+  wrap.innerHTML='<svg id="plan" xmlns="http://www.w3.org/2000/svg" viewBox="'+VB.x+' '+VB.y+' '+VB.w+' '+VB.h+'"'
+    +' width="'+Math.round(VB.w*Z)+'" height="'+Math.round(VB.h*Z)+'"'
+    +' style="--pw:'+pw+';--ph:'+ph+'" font-family="Yu Gothic UI, Yu Gothic, Meiryo, sans-serif">'
+    +drawShell()+drawItems()+drawHandles()+'</svg>';
+  bindSVG(); inspector(); summary(); roomUI();
+  document.getElementById('zl').textContent='×'+Z.toFixed(3);
+}
+
+/* ===== 操作 ===== */
+var drag=null;
+var MINSZ=100;
+function bindSVG(){
+  var svg=document.getElementById('plan');
+  svg.addEventListener('pointerdown',function(e){
+    /* ① リサイズハンドル */
+    var h=e.target.closest&&e.target.closest('.hd');
+    if(h){
+      var t=cur();
+      if(t){
+        drag={mode:'size',o:t,h:h.dataset.h,sx:e.clientX,sy:e.clientY,
+              b:{x:t.x,y:t.y,w:t.w,h:t.h},c0:{x:cx(t),y:cy(t)}};
+        e.preventDefault();
+      }
+      return;
+    }
+    /* ② 家具本体 = 移動 */
+    var g=e.target.closest&&e.target.closest('.it');
+    if(!g){ sel=null; render(); return; }
+    var id=+g.dataset.id, o=null;
+    for(var i=0;i<items.length;i++) if(items[i].id===id) o=items[i];
+    if(!o) return;
+    sel=id; drag={mode:'move',o:o,sx:e.clientX,sy:e.clientY,ox:o.x,oy:o.y};
+    e.preventDefault(); render();
+  });
+}
+
+function snapStep(){ return document.getElementById('csnap').checked?25:1; }
+
+/* 端ハンドルのドラッグ → 縦・横・斜めにサイズ変更（回転にも追従） */
+function resizeDrag(dx,dy){
+  var o=drag.o, b=drag.b, H=drag.h, st=snapStep();
+  var rad=(o.r||0)*Math.PI/180, cs=Math.cos(rad), sn=Math.sin(rad);
+  var lx= dx*cs + dy*sn;      /* ドラッグ量を家具のローカル軸へ回す */
+  var ly= -dx*sn + dy*cs;
+  function q(v){ return Math.round(v/st)*st; }
+  var nx=b.x, ny=b.y, nw=b.w, nh=b.h;
+  if(H.indexOf('w')>=0){ var x2=b.x+b.w; nx=Math.min(q(b.x+lx), x2-MINSZ); nw=x2-nx; }
+  if(H.indexOf('e')>=0){ nw=Math.max(MINSZ, q(b.x+b.w+lx)-b.x); }
+  if(H.indexOf('n')>=0){ var y2=b.y+b.h; ny=Math.min(q(b.y+ly), y2-MINSZ); nh=y2-ny; }
+  if(H.indexOf('s')>=0){ nh=Math.max(MINSZ, q(b.y+b.h+ly)-b.y); }
+  /* 掴んでいない側の辺が動かないよう補正（回転時に効く） */
+  var ax = (H.indexOf('w')>=0) ? (b.x+b.w) : (H.indexOf('e')>=0 ? b.x : b.x+b.w/2);
+  var ay = (H.indexOf('n')>=0) ? (b.y+b.h) : (H.indexOf('s')>=0 ? b.y : b.y+b.h/2);
+  var c0=drag.c0, c1={x:nx+nw/2, y:ny+nh/2};
+  function R(px,py){ return {x:px*cs-py*sn, y:px*sn+py*cs}; }
+  var A0=R(ax-c0.x, ay-c0.y), A1=R(ax-c1.x, ay-c1.y);
+  o.x=Math.round(nx+(A0.x+c0.x)-(A1.x+c1.x));
+  o.y=Math.round(ny+(A0.y+c0.y)-(A1.y+c1.y));
+  o.w=Math.round(nw); o.h=Math.round(nh);
+  syncName(o);
+}
+
+/* pointermove / up は document に1度だけ登録（再描画でSVGが作り直されても途切れない） */
+document.addEventListener('pointermove',function(e){
+  if(!drag) return;
+  var dx=(e.clientX-drag.sx)/Z, dy=(e.clientY-drag.sy)/Z;
+  if(drag.mode==='size'){ resizeDrag(dx,dy); }
+  else{
+    var st=snapStep();
+    drag.o.x=Math.round((drag.ox+dx)/st)*st;
+    drag.o.y=Math.round((drag.oy+dy)/st)*st;
+  }
+  render();
+});
+document.addEventListener('pointerup',function(){ drag=null; });
+document.addEventListener('pointercancel',function(){ drag=null; });
+document.addEventListener('keydown',function(e){
+  if(/input|select|textarea/i.test(e.target.tagName)) return;
+  var o=null; for(var i=0;i<items.length;i++) if(items[i].id===sel) o=items[i];
+  if(!o) return;
+  var step=e.shiftKey?10:50, used=true;
+  if(e.key==='ArrowLeft') o.x-=step;
+  else if(e.key==='ArrowRight') o.x+=step;
+  else if(e.key==='ArrowUp') o.y-=step;
+  else if(e.key==='ArrowDown') o.y+=step;
+  else if(e.key==='r'||e.key==='R') o.r=(o.r+90)%360;
+  else if(e.key==='Delete'||e.key==='Backspace'){ items=items.filter(function(i){return i.id!==sel;}); sel=null; }
+  else if((e.ctrlKey||e.metaKey)&&(e.key==='d'||e.key==='D')){ dup(); return; }
+  else used=false;
+  if(used){ e.preventDefault(); render(); }
+});
+
+function inspector(){
+  var el=document.getElementById('insp'), o=cur();
+  if(!o){ el.className='sub'; el.textContent='図面上の家具をクリックすると編集できます。'; return; }
+  el.className='';
+  var T0=TYPES[o.t]||TYPES.misc, cf=(o.f||T0.f), cs=(o.s||T0.s);
+  var sw=COLORS.map(function(c,i){
+    var on=cf.toLowerCase()===c[0].toLowerCase();
+    return '<button class="sw'+(on?' on':'')+'" data-c="'+i+'" title="'+c[2]+'" style="background:'+c[0]+';border-color:'+(on?'#1b1f24':c[1])+'"></button>';
+  }).join('');
+  var ts=Object.keys(TYPES).map(function(k){
+    return '<option value="'+k+'"'+(k===o.t?' selected':'')+'>'+(TYPELABEL[k]||k)+'</option>';
+  }).join('');
+  var rs=[0,90,180,270].map(function(a){
+    return '<option value="'+a+'"'+(a===(o.r||0)?' selected':'')+'>'+a+'°</option>';
+  }).join('');
+  el.innerHTML=
+    '<div class="row"><input type="text" id="fn" value="'+esc(o.bn)+'" placeholder="名称（基準名）"></div>'
+   +(isBase(o)
+      ? '<div class="sub" style="margin:-2px 0 3px">基準寸法どおり（'+fmt(o.bw)+'×'+fmt(o.bh)+'）</div>'
+      : '<div class="sub" style="margin:-2px 0 3px;color:#b8620a">表示名 <b>'+esc(o.n)+'</b> ／ 基準 '+fmt(o.bw)+'×'+fmt(o.bh)+' から変更中</div>')
+   +'<div class="row"><label>種類</label><select id="ft" style="width:auto;flex:1">'+ts+'</select>'
+   +'<label>向き</label><select id="fr" style="width:auto">'+rs+'</select></div>'
+   +'<div class="row"><label>W</label><input type="number" id="fw" value="'+o.w+'" step="10" style="width:62px">'
+   +'<label>D</label><input type="number" id="fh" value="'+o.h+'" step="10" style="width:62px">'
+   +'<label>H</label><input type="number" id="fz" value="'+(o.z||'')+'" step="10" placeholder="任意" style="width:62px"></div>'
+   +'<div class="row"><label>X</label><input type="number" id="fx" value="'+o.x+'" step="25" style="width:62px">'
+   +'<label>Y</label><input type="number" id="fy" value="'+o.y+'" step="25" style="width:62px"></div>'
+   +'<div class="row" style="gap:3px;margin-top:6px">'+sw+'</div>'
+   +'<div class="row"><label>塗り</label><input type="color" id="fcf" value="'+cf+'">'
+   +'<label>線</label><input type="color" id="fcs" value="'+cs+'">'
+   +'<button onclick="clrReset()">既定色</button>'
+   +'<button onclick="clrSameName()">同名に適用</button></div>'
+   +'<div class="row"><button onclick="rot()">90°回転</button><button onclick="dup()">複製</button><button onclick="del()">削除</button></div>'
+   +'<div class="row"><button onclick="zTop()">最前面へ</button><button onclick="zBot()">最背面へ</button>'
+   +'<button onclick="rebase()"'+(isBase(o)?' disabled':'')+'>現寸を基準にする</button></div>'
+   +(outside(o)?'<div class="sub" style="color:#c0392b">⚠ 室内からはみ出しています</div>':'');
+
+  ['fn:bn:0','fw:w:1','fh:h:1','fx:x:1','fy:y:1','fz:z:1'].forEach(function(spec){
+    var p=spec.split(':'), t=document.getElementById(p[0]);
+    t.oninput=function(){
+      if(p[1]==='z'){ if(t.value==='') delete o.z; else o.z=+t.value||0; }
+      else o[p[1]] = p[2]==='1' ? (+t.value||0) : t.value;
+      if(p[1]==='w'||p[1]==='h'||p[1]==='bn') syncName(o);
+      var pos=null; try{ pos=t.selectionStart; }catch(err){}
+      render();
+      var n=document.getElementById(p[0]);
+      if(n){ n.focus(); if(pos!==null){ try{n.setSelectionRange(pos,pos);}catch(err){} } }
+    };
+  });
+  document.getElementById('ft').onchange=function(){ o.t=this.value; render(); };
+  document.getElementById('fr').onchange=function(){ o.r=+this.value; render(); };
+  document.getElementById('fcf').onchange=function(){ o.f=this.value; render(); };
+  document.getElementById('fcs').onchange=function(){ o.s=this.value; render(); };
+  Array.prototype.forEach.call(el.querySelectorAll('.sw'),function(b){
+    b.onclick=function(){ var c=COLORS[+b.dataset.c]; o.f=c[0]; o.s=c[1]; render(); };
+  });
+}
+function clrReset(){ var o=cur(); if(!o) return; delete o.f; delete o.s; render(); }
+function clrSameName(){
+  var o=cur(); if(!o) return;
+  var T0=TYPES[o.t]||TYPES.misc, f=o.f||T0.f, st=o.s||T0.s, k=0;
+  items.forEach(function(i){ if(i.n===o.n && i.id!==o.id){ i.f=f; i.s=st; k++; } });
+  render(); alert('「'+o.n+'」'+k+'件に同じ色を適用しました。');
+}
+function zTop(){ var o=cur(); if(!o) return; items=items.filter(function(i){return i!==o;}); items.push(o); render(); }
+function zBot(){ var o=cur(); if(!o) return; items=items.filter(function(i){return i!==o;}); items.unshift(o); render(); }
+function cur(){ for(var i=0;i<items.length;i++) if(items[i].id===sel) return items[i]; return null; }
+function rot(){ var o=cur(); if(o){ o.r=(o.r+90)%360; render(); } }
+function dup(){ var o=cur(); if(!o) return; var n=JSON.parse(JSON.stringify(o)); n.id=++nextId; n.x=o.x+300; n.y=o.y+300; items.push(n); syncName(n); sel=n.id; render(); }
+function del(){ items=items.filter(function(i){return i.id!==sel;}); sel=null; render(); }
+
+/* パレット */
+document.getElementById('pal').innerHTML=PALETTE.map(function(p,i){
+  return '<button data-i="'+i+'">'+p[1]+'<br><span style="color:#889">'+p[2]+'×'+p[3]+'</span></button>';
+}).join('');
+document.getElementById('pal').onclick=function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  var p=PALETTE[+b.dataset.i];
+  var o={id:++nextId,t:p[0],n:p[1],bn:p[1],x:3000,y:3000,w:p[2],h:p[3],bw:p[2],bh:p[3],r:0};
+  items.push(o); syncName(o); sel=o.id; render();
+};
+
+/* ===== 室の内法（面積固定） ===== */
+function roomUI(){
+  /* 入力中の欄は書き換えない（カーソル飛び防止） */
+  var a=document.activeElement;
+  var ew=document.getElementById('rw'), eh=document.getElementById('rh');
+  if(a!==ew) ew.value=RW;
+  if(a!==eh) eh.value=RH;
+  var sl=document.getElementById('rwslide');
+  if(a!==sl && RW>=+sl.min && RW<=+sl.max) sl.value=RW;
+  var out=items.filter(outside).length;
+  document.getElementById('roominfo').innerHTML=
+    '実面積 '+(RW*RH/1e6).toFixed(2)+'㎡（'+fmt(RW)+' × '+fmt(RH)+'）'
+    +(out?'<br><span style="color:#c0392b">⚠ '+out+'点が室外にはみ出しています</span>':'');
+  document.getElementById('roomhead').textContent='内法 '+fmt(RW)+' × '+fmt(RH)+' mm = '+(RW*RH/1e6).toFixed(2)+'㎡';
+}
+function changeRoom(w){ setRoom(w); render(); }
+function resetRoom(){ changeRoom(RW0); }
+function fitItems(){
+  var n=0;
+  items.forEach(function(o){
+    var b=bbox(o), dx=0, dy=0;
+    if(b.x<0) dx=-b.x; else if(b.x+b.w>RW) dx=RW-(b.x+b.w);
+    if(b.y<0) dy=-b.y; else if(b.y+b.h>RH) dy=RH-(b.y+b.h);
+    if(dx||dy){ o.x=Math.round(o.x+dx); o.y=Math.round(o.y+dy); n++; }
+  });
+  render();
+  alert(n?n+'点を室内へ移動しました。':'はみ出している家具はありません。');
+}
+document.getElementById('rw').oninput=function(){ if(+this.value>=3000) changeRoom(+this.value); };
+document.getElementById('rh').oninput=function(){ if(+this.value>=3000) changeRoom(AREA/+this.value); };
+document.getElementById('rwslide').oninput=function(){ changeRoom(+this.value); };
+
+/* ===== レイアウトパターンの切替 ===== */
+function fillPatternUI(){
+  var sel=document.getElementById('pat');
+  sel.innerHTML=PATTERNS.map(function(p,i){ return '<option value="'+i+'">'+p.name+'</option>'; }).join('');
+  sel.value=patIdx;
+  showPatternInfo(patIdx);
+}
+function showPatternInfo(i){
+  document.getElementById('patseat').textContent=PATTERNS[i].seat;
+  document.getElementById('patdesc').textContent=PATTERNS[i].desc;
+}
+function applyPattern(){
+  var i=+document.getElementById('pat').value;
+  if(!confirm('「'+PATTERNS[i].name+'」に切り替えます。\n現在の図面の編集内容は失われます（「保存」済みのデータは残ります）。よろしいですか？')) return;
+  patIdx=i; VARIANTS={}; TYPES=JSON.parse(JSON.stringify(TYPES0)); setRoom(RW0);
+  items=normalize(DEFAULT()); nextId=1000; sel=null;
+  showPatternInfo(i); fillTypeSelects(); render();
+}
+document.getElementById('pat').onchange=function(){ showPatternInfo(+this.value); };
+fillPatternUI();
+
+/* 種類セレクトの中身を用意 */
+function fillTypeSelects(){
+  var opts=Object.keys(TYPES).map(function(k){
+    return '<option value="'+k+'">'+(TYPELABEL[k]||k)+'</option>';
+  }).join('');
+  var ct=document.getElementById('ct'), tt=document.getElementById('tt');
+  var a=ct.value, b=tt.value;
+  ct.innerHTML=opts; tt.innerHTML=opts;
+  ct.value=a||'misc'; tt.value=b||'desk';
+  syncTypeColor();
+}
+function syncTypeColor(){
+  var k=document.getElementById('tt').value, T=TYPES[k]||TYPES.misc;
+  document.getElementById('tf').value=T.f;
+  document.getElementById('ts').value=T.s;
+}
+
+/* 自由入力で家具を追加 */
+function addCustom(){
+  var n=document.getElementById('cn').value.trim();
+  if(!n){ alert('名称を入力してください。'); document.getElementById('cn').focus(); return; }
+  var w=+document.getElementById('cw').value||600;
+  var d=+document.getElementById('cd').value||450;
+  var hv=document.getElementById('ch').value;
+  var t=document.getElementById('ct').value||'misc';
+  var f=document.getElementById('cc').value;
+  var o={id:++nextId,t:t,n:n,bn:n,x:3000,y:3000,w:w,h:d,bw:w,bh:d,r:0,f:f,s:darken(f,0.45)};
+  if(hv!=='') o.z=+hv||0;
+  items.push(o); syncName(o); sel=o.id;
+  document.getElementById('cn').value=''; document.getElementById('ch').value='';
+  render();
+}
+
+/* 種類ごとの色を一括変更（個別指定色が無いものに反映） */
+function applyType(){
+  var k=document.getElementById('tt').value;
+  TYPES[k]={f:document.getElementById('tf').value, s:document.getElementById('ts').value};
+  render();
+}
+function resetColors(){
+  if(!confirm('個別に設定した色をすべて解除し、種類別の色も初期化します。よろしいですか？')) return;
+  TYPES=JSON.parse(JSON.stringify(TYPES0));
+  items.forEach(function(o){ delete o.f; delete o.s; });
+  render();
+}
+document.getElementById('tt').onchange=syncTypeColor;
+fillTypeSelects();
+
+/* 集計 */
+function summary(){
+  var m={}, area=0;
+  items.forEach(function(o){
+    var k=o.n+'|'+fmt(o.w)+'×'+fmt(o.h)+(o.z?' H'+fmt(o.z):'');
+    m[k]=(m[k]||0)+1;
+    if(o.t!=='chair'&&o.t!=='partition') area+=o.w*o.h/1e6;
+  });
+  var rows=Object.keys(m).sort().map(function(k){
+    var p=k.split('|');
+    return '<tr><td>'+esc(p[0])+'</td><td style="color:#889">'+p[1]+'</td><td>'+m[k]+'</td></tr>';
+  }).join('');
+  document.getElementById('sum').innerHTML='<tr><th>品名</th><th>寸法</th><th>数</th></tr>'+rows
+   +'<tr><td colspan="2"><b>什器占有面積</b></td><td><b>'+area.toFixed(1)+'㎡</b></td></tr>'
+   +'<tr><td colspan="2">室面積 / 占有率</td><td>'+(RW*RH/1e6).toFixed(1)+'㎡ / '+(area/(RW*RH/1e6)*100).toFixed(0)+'%</td></tr>';
+}
+
+/* 保存・書き出し */
+function snapshot(){ return {roomW:RW,pattern:PATTERNS[patIdx].id,items:items,nextId:nextId,types:TYPES,variants:VARIANTS}; }
+function restore(d){
+  items=d.items||[]; nextId=d.nextId||1000;
+  VARIANTS=d.variants||{};
+  if(d.roomW) setRoom(d.roomW);
+  if(d.pattern){ for(var pi=0;pi<PATTERNS.length;pi++) if(PATTERNS[pi].id===d.pattern) patIdx=pi; }
+  fillPatternUI();
+  normalize(items);
+  TYPES = d.types ? d.types : JSON.parse(JSON.stringify(TYPES0));
+  Object.keys(TYPES0).forEach(function(k){ if(!TYPES[k]) TYPES[k]=TYPES0[k]; });
+  sel=null; fillTypeSelects(); render();
+}
+function saveLS(){ localStorage.setItem('labPlan',JSON.stringify(snapshot())); alert('ブラウザに保存しました。'); }
+function loadLS(){ var s=localStorage.getItem('labPlan'); if(!s){alert('保存データがありません。');return;} restore(JSON.parse(s)); }
+function resetAll(){ if(confirm('選択中のパターンの初期配置・初期色に戻します。よろしいですか？')){ TYPES=JSON.parse(JSON.stringify(TYPES0)); VARIANTS={}; items=normalize(DEFAULT()); nextId=1000; sel=null; fillTypeSelects(); render(); } }
+function dl(blob,name){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);},3000); }
+function expJSON(){ dl(new Blob([JSON.stringify(snapshot(),null,1)],{type:'application/json'}),'研究室_レイアウト.json'); }
+document.getElementById('fimp').onchange=function(e){
+  var f=e.target.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){ try{ restore(JSON.parse(r.result)); }catch(err){ alert('JSONの読み込みに失敗しました。'); } e.target.value=''; };
+  r.readAsText(f);
+};
+function svgSource(){
+  var s=document.getElementById('plan').cloneNode(true);
+  Array.prototype.forEach.call(s.querySelectorAll('.sel'),function(n){n.classList.remove('sel');});
+  Array.prototype.forEach.call(s.querySelectorAll('.hdl'),function(n){n.parentNode.removeChild(n);});
+  s.setAttribute('width',Math.round(VB.w/4));
+  s.setAttribute('height',Math.round(VB.h/4));
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(s);
+}
+function expSVG(){ dl(new Blob([svgSource()],{type:'image/svg+xml;charset=utf-8'}),'研究室_見取図.svg'); }
+function expPNG(){
+  var src=svgSource();
+  var url=URL.createObjectURL(new Blob([src],{type:'image/svg+xml;charset=utf-8'}));
+  var img=new Image();
+  img.onload=function(){
+    var W=2600, H=Math.round(W*VB.h/VB.w);
+    var c=document.createElement('canvas'); c.width=W; c.height=H;
+    var g=c.getContext('2d'); g.fillStyle='#ffffff'; g.fillRect(0,0,W,H);
+    g.drawImage(img,0,0,W,H);
+    c.toBlob(function(b){ dl(b,'研究室_見取図.png'); URL.revokeObjectURL(url); });
+  };
+  img.onerror=function(){ alert('PNG書き出しに失敗しました。SVG書き出しをご利用ください。'); URL.revokeObjectURL(url); };
+  img.src=url;
+}
+
+['cgrid','cdim','clab'].forEach(function(id){ document.getElementById(id).onchange=render; });
+document.getElementById('pscale').onchange=render;
+document.getElementById('zoom').oninput=function(e){ Z=+e.target.value; render(); };
+render();
+</script>
+</body>
+</html>
